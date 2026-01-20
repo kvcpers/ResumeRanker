@@ -36,44 +36,10 @@ export default function ResumeResults() {
     { enabled: !!resumeId }
   );
 
-  // Mock recommendations - in production, these would come from AI analysis
-  const recommendations = [
-    {
-      type: "skill_gap",
-      title: "Add More Technical Skills",
-      description: "Consider adding programming languages like Python, JavaScript, or cloud technologies (AWS, Azure) to increase your technical score.",
-      priority: "high",
-      impact: "+15%"
-    },
-    {
-      type: "experience",
-      title: "Quantify Your Achievements",
-      description: "Add specific metrics and numbers to your work experience. For example: 'Increased sales by 30%' or 'Managed team of 10 people'.",
-      priority: "high",
-      impact: "+12%"
-    },
-    {
-      type: "education",
-      title: "Highlight Relevant Certifications",
-      description: "If you have professional certifications, make sure they're prominently displayed. Consider adding industry-specific certifications.",
-      priority: "medium",
-      impact: "+8%"
-    },
-    {
-      type: "activity",
-      title: "Include Leadership Experience",
-      description: "Add any volunteer work, side projects, or leadership roles. These demonstrate soft skills and initiative.",
-      priority: "medium",
-      impact: "+6%"
-    },
-    {
-      type: "career_advice",
-      title: "Optimize Keywords",
-      description: "Review job descriptions in your field and ensure your resume includes relevant keywords. This helps with ATS (Applicant Tracking Systems).",
-      priority: "low",
-      impact: "+5%"
-    }
-  ];
+  const { data: recommendations = [], isLoading: recommendationsLoading } = trpc.resume.getRecommendations.useQuery(
+    { resumeId: resumeId! },
+    { enabled: !!resumeId }
+  );
 
   if (!isAuthenticated || !user) {
     return (
@@ -178,30 +144,40 @@ export default function ResumeResults() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recommendations.map((rec, index) => (
-                  <div
-                    key={index}
-                    className="p-4 border border-border rounded-lg hover:border-primary/50 transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      {getPriorityIcon(rec.priority)}
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-semibold">{rec.title}</h3>
-                          <span className={`text-sm font-mono ${getPriorityColor(rec.priority)}`}>
-                            {rec.impact}
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{rec.description}</p>
-                        <div className="mt-2">
-                          <span className={`text-xs px-2 py-1 rounded ${getPriorityColor(rec.priority)} bg-opacity-10`}>
-                            {rec.priority.toUpperCase()} PRIORITY
-                          </span>
+                {recommendationsLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p className="font-mono">[ LOADING RECOMMENDATIONS... ]</p>
+                  </div>
+                ) : recommendations.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p className="font-mono">[ NO RECOMMENDATIONS AVAILABLE ]</p>
+                  </div>
+                ) : (
+                  recommendations.map((rec, index) => (
+                    <div
+                      key={index}
+                      className="p-4 border border-border rounded-lg hover:border-primary/50 transition-colors"
+                    >
+                      <div className="flex items-start gap-3">
+                        {getPriorityIcon(rec.priority || "medium")}
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="font-semibold">{rec.title}</h3>
+                            <span className={`text-sm font-mono ${getPriorityColor(rec.priority || "medium")}`}>
+                              {rec.estimatedImpact || "N/A"}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{rec.description}</p>
+                          <div className="mt-2">
+                            <span className={`text-xs px-2 py-1 rounded ${getPriorityColor(rec.priority || "medium")} bg-opacity-10`}>
+                              {(rec.priority || "medium").toUpperCase()} PRIORITY
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

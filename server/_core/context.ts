@@ -30,9 +30,10 @@ export async function createContext(
       
       if (session) {
         // Get user from database
-        user = await db.getUserById(sessionData.userId);
+        const fetchedUser = await db.getUserById(sessionData.userId);
         
-        if (user) {
+        if (fetchedUser) {
+          user = fetchedUser;
           // Update last signed in time
           await db.updateUserLastSignedIn(user.id);
         }

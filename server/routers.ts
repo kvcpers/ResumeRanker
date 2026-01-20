@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { getResumesByUserId, getResumeById, getResumeScore, getGlobalRankings, getTotalResumeCount, getUserByEmail, createUser, createSession, deleteSession, getLeaderboardStats } from "./db";
+import { getResumesByUserId, getResumeById, getResumeScore, getGlobalRankings, getTotalResumeCount, getUserByEmail, createUser, createSession, deleteSession, getLeaderboardStats, getRecommendationsByResumeId } from "./db";
 import { hashPassword, verifyPassword, createSessionToken } from "./_core/auth";
 
 export const appRouter = router({
@@ -146,6 +146,7 @@ export const appRouter = router({
           throw new Error("Resume not found or access denied");
         }
         const score = await getResumeScore(input.resumeId);
+        // getResumeScore now returns null instead of undefined
         return score;
       }),
 
@@ -164,6 +165,17 @@ export const appRouter = router({
           topScore: stats.topScore,
           scoreDistribution: stats.scoreDistribution,
         };
+      }),
+
+    getRecommendations: protectedProcedure
+      .input(z.object({ resumeId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const resume = await getResumeById(input.resumeId);
+        if (!resume || resume.userId !== ctx.user.id) {
+          throw new Error("Resume not found or access denied");
+        }
+        const recommendations = await getRecommendationsByResumeId(input.resumeId);
+        return recommendations;
       }),
   }),
 });

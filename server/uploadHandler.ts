@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
 import { storagePut } from "./storage";
-import { createResume, updateResumeParsingStatus, updateResumeRawText, getUserById, createOrUpdateResumeScore, getTotalResumeCount } from "./db";
+import { createResume, updateResumeParsingStatus, updateResumeRawText, getUserById, createOrUpdateResumeScore, getTotalResumeCount, createResumeEducation, createResumeExperience, createResumeSkills, createResumeActivities, createRecommendation } from "./db";
 import busboy from "busboy";
 import { nanoid } from "nanoid";
 import { COOKIE_NAME } from "@shared/const";
 import { verifySessionToken } from "./_core/auth";
 import * as db from "./db";
+import { analyzeResume } from "./_core/resumeAnalysis";
 
 /**
  * Handle resume file uploads
@@ -103,6 +104,7 @@ export async function handleResumeUpload(req: Request, res: Response) {
           }
 
           console.log("[Upload] File buffer size:", fileBuffer.length);
+          console.log("[Upload] File name:", fileName);
 
           // Validate PDF
           if (!fileName.toLowerCase().endsWith(".pdf")) {
@@ -144,25 +146,146 @@ export async function handleResumeUpload(req: Request, res: Response) {
             return res.status(500).json({ error: "Failed to create resume record" });
           }
 
-          // Update with raw text and mark as ready for parsing
-          const rawText = `[PDF Content - ${fileName}] Size: ${fileSize} bytes`;
-          await updateResumeRawText(resumeId, rawText);
-          await updateResumeParsingStatus(resumeId, "completed");
+          // Update parsing status to "parsing"
+          await updateResumeParsingStatus(resumeId, "parsing");
 
-          // Create initial score (mock scores for now - in production, these would come from AI analysis)
-          const totalResumes = await getTotalResumeCount();
-          const mockScores = {
-            overallScore: "75",
-            educationScore: "80",
-            experienceScore: "70",
-            skillsScore: "75",
-            activitiesScore: "65",
-            globalPercentile: "68",
-            globalRank: totalResumes + 1,
-            totalResumesRanked: totalResumes + 1,
-          };
-          
-          await createOrUpdateResumeScore(resumeId, user.id, mockScores);
+          // Analyze resume with AI
+          console.log("[Upload] Starting AI analysis...");
+          try {
+            const analysis = await analyzeResume(fileBuffer);
+            
+            // Store raw text
+            await updateResumeRawText(resumeId, analysis.rawText);
+            
+            // Store parsed data
+            await createResumeEducation(resumeId, analysis.parsedData.education);
+            await createResumeExperience(resumeId, analysis.parsedData.experience);
+            await createResumeSkills(resumeId, analysis.parsedData.skills);
+            await createResumeActivities(resumeId, analysis.parsedData.activities);
+            
+            // Calculate global rank and percentile
+            const totalResumes = await getTotalResumeCount();
+            const overallScoreNum = parseFloat(analysis.scores.overallScore);
+            
+            // Get all scores to calculate percentile
+            const allScores = await db.getGlobalRankings(10000, 0);
+            const scoresArray = allScores.map(s => parseFloat(s.overallScore || "0")).sort((a, b) => b - a);
+            
+            // Calculate rank: find position where this score would fit (higher scores first)
+            let rank = scoresArray.length + 1; // Default to last if no scores exist
+            for (let i = 0; i < scoresArray.length; i++) {
+              if (overallScoreNum >= scoresArray[i]) {
+                rank = i + 1;
+                break;
+              }
+            }
+            
+            // Calculate percentile: percentage of resumes with lower scores
+            const totalRanked = scoresArray.length + 1; // Include this resume
+            const percentile = Math.round(((totalRanked - rank) / totalRanked) * 100);
+            
+            // Store scores
+            await createOrUpdateResumeScore(resumeId, user.id, {
+              ...analysis.scores,
+              globalPercentile: percentile.toString(),
+              globalRank: rank,
+              totalResumesRanked: totalRanked,
+            });
+            
+            // Store recommendations
+            for (const rec of analysis.recommendations) {
+              await createRecommendation(
+                resumeId,
+                user.id,
+                rec.type,
+                rec.title,
+                rec.description,
+                rec.priority,
+                rec.estimatedImpact
+              );
+            }
+            
+            // Mark parsing as completed
+            await updateResumeParsingStatus(resumeId, "completed");
+            
+            console.log("[Upload] AI analysis complete");
+          } catch (analysisError) {
+            console.error("[Upload] AI analysis failed:", analysisError);
+            console.error("[Upload] Error message:", analysisError instanceof Error ? analysisError.message : String(analysisError));
+            console.error("[Upload] Error stack:", analysisError instanceof Error ? analysisError.stack : "No stack trace");
+            
+            // Try to extract more details from the error
+            if (analysisError instanceof Error) {
+              console.error("[Upload] Error name:", analysisError.name);
+              if ((analysisError as any).cause) {
+                console.error("[Upload] Error cause:", (analysisError as any).cause);
+              }
+            }
+            
+            // Even if analysis fails, try to create basic scores and recommendations from PDF text
+            try {
+              console.log("[Upload] Attempting fallback analysis...");
+              const { extractTextFromPDF } = await import("./_core/resumeAnalysis");
+              const rawText = await extractTextFromPDF(fileBuffer);
+              await updateResumeRawText(resumeId, rawText);
+              
+              // Use basic extraction - import the module
+              const resumeAnalysis = await import("./_core/resumeAnalysis");
+              const basicData = resumeAnalysis.extractBasicInfoFromText(rawText);
+              const basicScores = resumeAnalysis.calculateResumeScores(basicData);
+              const basicRecommendations = resumeAnalysis.getDefaultRecommendations(basicData, basicScores);
+              
+              // Store basic data
+              await createResumeEducation(resumeId, basicData.education);
+              await createResumeExperience(resumeId, basicData.experience);
+              await createResumeSkills(resumeId, basicData.skills);
+              await createResumeActivities(resumeId, basicData.activities);
+              
+              // Calculate rank
+              const totalResumes = await getTotalResumeCount();
+              const overallScoreNum = parseFloat(basicScores.overallScore);
+              const allScores = await db.getGlobalRankings(10000, 0);
+              const scoresArray = allScores.map(s => parseFloat(s.overallScore || "0")).sort((a, b) => b - a);
+              let rank = scoresArray.length + 1;
+              for (let i = 0; i < scoresArray.length; i++) {
+                if (overallScoreNum >= scoresArray[i]) {
+                  rank = i + 1;
+                  break;
+                }
+              }
+              const totalRanked = scoresArray.length + 1;
+              const percentile = Math.round(((totalRanked - rank) / totalRanked) * 100);
+              
+              // Store scores
+              await createOrUpdateResumeScore(resumeId, user.id, {
+                ...basicScores,
+                globalPercentile: percentile.toString(),
+                globalRank: rank,
+                totalResumesRanked: totalRanked,
+              });
+              
+              // Store recommendations
+              for (const rec of basicRecommendations) {
+                await createRecommendation(
+                  resumeId,
+                  user.id,
+                  rec.type,
+                  rec.title,
+                  rec.description,
+                  rec.priority,
+                  rec.estimatedImpact
+                );
+              }
+              
+              await updateResumeParsingStatus(resumeId, "completed");
+              console.log("[Upload] Fallback analysis completed successfully");
+            } catch (fallbackError) {
+              console.error("[Upload] Fallback analysis also failed:", fallbackError);
+              await updateResumeParsingStatus(resumeId, "failed", String(analysisError));
+            }
+            // Still return success, but with failed parsing status if both failed
+            // Don't throw - allow upload to complete even if analysis fails
+          }
 
           console.log("[Upload] Resume processing complete");
 
@@ -178,7 +301,16 @@ export async function handleResumeUpload(req: Request, res: Response) {
           resolve();
         } catch (error) {
           console.error("[Upload] Error during processing:", error);
-          res.status(500).json({ error: "Upload failed", details: String(error) });
+          console.error("[Upload] Error stack:", error instanceof Error ? error.stack : "No stack trace");
+          console.error("[Upload] Error details:", {
+            message: error instanceof Error ? error.message : String(error),
+            name: error instanceof Error ? error.name : "Unknown",
+          });
+          res.status(500).json({ 
+            error: "Upload failed", 
+            details: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+          });
           resolve();
         }
       });

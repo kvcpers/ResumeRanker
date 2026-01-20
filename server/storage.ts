@@ -6,6 +6,23 @@ import { ENV } from './_core/env';
 type StorageConfig = { baseUrl: string; apiKey: string };
 
 function getStorageConfig(): StorageConfig | null {
+  // Don't use LLM API URLs for storage - they're only for LLM calls
+  // Check if it's a Gemini, OpenRouter, or OpenAI URL and skip it
+  if (ENV.forgeApiUrl) {
+    if (ENV.forgeApiUrl.includes("generativelanguage.googleapis.com") || // Gemini
+        ENV.forgeApiUrl.includes("openrouter.ai") || // OpenRouter
+        ENV.forgeApiUrl.includes("api.openai.com")) { // OpenAI
+      // This is an LLM API, not storage API - return null to use local storage
+      return null;
+    }
+  }
+  
+  // Check API key format - OpenRouter keys start with sk-or-v1-
+  if (ENV.forgeApiKey && ENV.forgeApiKey.startsWith("sk-or-v1-")) {
+    // OpenRouter is for LLM only, not storage
+    return null;
+  }
+  
   const baseUrl = ENV.forgeApiUrl;
   const apiKey = ENV.forgeApiKey;
 
@@ -126,7 +143,17 @@ export async function storagePut(
 }
 
 export async function storageGet(relKey: string): Promise<{ key: string; url: string; }> {
-  const { baseUrl, apiKey } = getStorageConfig();
+  const config = getStorageConfig();
+  if (!config) {
+    // If storage is not configured, return local file URL
+    const key = normalizeKey(relKey);
+    return {
+      key,
+      url: `/uploads/${key}`,
+    };
+  }
+  
+  const { baseUrl, apiKey } = config;
   const key = normalizeKey(relKey);
   return {
     key,

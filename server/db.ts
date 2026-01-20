@@ -1,8 +1,8 @@
-import { eq, desc, and, gt, count } from "drizzle-orm";
+import { eq, desc, and, gt, count, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { nanoid } from "nanoid";
-import { InsertUser, InsertSession, users, sessions, resumes, resumeScores, biasFlags, recommendations } from "../drizzle/schema";
+import { InsertUser, InsertSession, users, sessions, resumes, resumeScores, biasFlags, recommendations, resumeEducation, resumeExperience, resumeSkills, resumeActivities } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -42,8 +42,11 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   }
 
   try {
+    // Build values object with required fields
     const values: InsertUser = {
       openId: user.openId,
+      email: user.email || "",
+      passwordHash: user.passwordHash || "",
     };
     const updateSet: Record<string, unknown> = {};
 
@@ -54,11 +57,19 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       const value = user[field];
       if (value === undefined) return;
       const normalized = value ?? null;
-      values[field] = normalized;
+      if (field === "email" && normalized) {
+        values.email = normalized;
+      } else {
+        (values as any)[field] = normalized;
+      }
       updateSet[field] = normalized;
     };
 
     textFields.forEach(assignNullable);
+
+    if (user.passwordHash) {
+      values.passwordHash = user.passwordHash;
+    }
 
     if (user.lastSignedIn !== undefined) {
       values.lastSignedIn = user.lastSignedIn;
@@ -80,7 +91,10 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    // PostgreSQL uses ON CONFLICT instead of onDuplicateKeyUpdate
+    // Note: onConflictDoUpdate requires all required fields in values
+    await db.insert(users).values(values as InsertUser).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -263,10 +277,10 @@ export async function updateResumeRawText(resumeId: number, rawText: string) {
  */
 export async function getResumeScore(resumeId: number) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) return null;
   
   const result = await db.select().from(resumeScores).where(eq(resumeScores.resumeId, resumeId)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
+  return result.length > 0 ? result[0] : null;
 }
 
 export async function createOrUpdateResumeScore(resumeId: number, userId: number, scoreData: any) {
@@ -432,4 +446,111 @@ export async function getRecommendationsByResumeId(resumeId: number) {
   if (!db) return [];
   
   return await db.select().from(recommendations).where(eq(recommendations.resumeId, resumeId)).orderBy(desc(recommendations.priority));
+}
+
+/**
+ * Store parsed education data
+ */
+export async function createResumeEducation(resumeId: number, educationData: Array<{
+  institution?: string;
+  degree?: string;
+  fieldOfStudy?: string;
+  gpa?: string;
+  startDate?: string;
+  endDate?: string;
+}>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  if (educationData.length === 0) return [];
+  
+  const values = educationData.map(edu => ({
+    resumeId,
+    institution: edu.institution || null,
+    degree: edu.degree || null,
+    fieldOfStudy: edu.fieldOfStudy || null,
+    gpa: edu.gpa || null,
+    startDate: edu.startDate || null,
+    endDate: edu.endDate || null,
+  }));
+  
+  return await db.insert(resumeEducation).values(values).returning();
+}
+
+/**
+ * Store parsed experience data
+ */
+export async function createResumeExperience(resumeId: number, experienceData: Array<{
+  company?: string;
+  position?: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  durationMonths?: number;
+}>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  if (experienceData.length === 0) return [];
+  
+  const values = experienceData.map(exp => ({
+    resumeId,
+    company: exp.company || null,
+    position: exp.position || null,
+    description: exp.description || null,
+    startDate: exp.startDate || null,
+    endDate: exp.endDate || null,
+    durationMonths: exp.durationMonths || null,
+  }));
+  
+  return await db.insert(resumeExperience).values(values).returning();
+}
+
+/**
+ * Store parsed skills data
+ */
+export async function createResumeSkills(resumeId: number, skillsData: Array<{
+  skillName: string;
+  category?: "technical" | "soft" | "domain" | "language" | "tool" | "framework" | "other";
+  proficiencyLevel?: "beginner" | "intermediate" | "advanced" | "expert";
+}>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  if (skillsData.length === 0) return [];
+  
+  const values = skillsData.map(skill => ({
+    resumeId,
+    skillName: skill.skillName,
+    skillCategory: (skill.category || "other") as any,
+    proficiencyLevel: (skill.proficiencyLevel || "intermediate") as any,
+    mentionCount: 1,
+  }));
+  
+  return await db.insert(resumeSkills).values(values).returning();
+}
+
+/**
+ * Store parsed activities data
+ */
+export async function createResumeActivities(resumeId: number, activitiesData: Array<{
+  activityName?: string;
+  activityType?: "leadership" | "volunteer" | "achievement" | "award" | "certification" | "project" | "publication" | "other";
+  description?: string;
+  date?: string;
+}>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  if (activitiesData.length === 0) return [];
+  
+  const values = activitiesData.map(activity => ({
+    resumeId,
+    activityName: activity.activityName || null,
+    activityType: (activity.activityType || "other") as any,
+    description: activity.description || null,
+    date: activity.date || null,
+  }));
+  
+  return await db.insert(resumeActivities).values(values).returning();
 }

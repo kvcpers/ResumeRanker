@@ -209,10 +209,35 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-const resolveApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-    : "https://forge.manus.im/v1/chat/completions";
+const resolveApiUrl = () => {
+  // If custom URL is provided, use it
+  if (ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0) {
+    // Check if it's OpenRouter
+    if (ENV.forgeApiUrl.includes("openrouter.ai")) {
+      return `${ENV.forgeApiUrl.replace(/\/$/, "")}/chat/completions`;
+    }
+    // Check if it's a Gemini API URL - return as-is, invokeGeminiAPI will handle it
+    if (ENV.forgeApiUrl.includes("generativelanguage.googleapis.com")) {
+      return ENV.forgeApiUrl; // Base URL for Gemini
+    }
+    return `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
+  }
+  // Check for OpenRouter API key format (starts with sk-or-v1-)
+  if (ENV.forgeApiKey && ENV.forgeApiKey.startsWith("sk-or-v1-")) {
+    return "https://openrouter.ai/api/v1/chat/completions";
+  }
+  // Check for Gemini API key format (starts with AIza)
+  if (ENV.forgeApiKey && ENV.forgeApiKey.startsWith("AIza")) {
+    // Return base URL, not full model URL - invokeGeminiAPI will construct it
+    return "https://generativelanguage.googleapis.com/v1beta";
+  }
+  // Default to OpenAI if OPENAI_API_KEY is set
+  if (process.env.OPENAI_API_KEY) {
+    return "https://api.openai.com/v1/chat/completions";
+  }
+  // Fallback to Manus Forge (if available)
+  return "https://forge.manus.im/v1/chat/completions";
+};
 
 const assertApiKey = () => {
   if (!ENV.forgeApiKey) {
@@ -265,6 +290,158 @@ const normalizeResponseFormat = ({
   };
 };
 
+/**
+ * Invoke Google Gemini API (different format than OpenAI)
+ */
+async function invokeGeminiAPI(params: InvokeParams, baseUrl: string): Promise<InvokeResult> {
+  const { messages, responseFormat, response_format, outputSchema, output_schema } = params;
+  
+  // Convert messages to Gemini format
+  // Gemini expects an array of message objects with role and parts
+  const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+  let systemInstruction = "";
+  
+  for (const msg of messages) {
+    // Collect system messages to add as systemInstruction
+    if (msg.role === "system") {
+      const sysContent = typeof msg.content === "string" 
+        ? msg.content 
+        : Array.isArray(msg.content)
+        ? msg.content.map(c => typeof c === "string" ? c : (c as any).text || "").join("\n")
+        : "";
+      if (sysContent) {
+        systemInstruction = sysContent;
+      }
+      continue;
+    }
+    
+    const role = msg.role === "assistant" ? "model" : "user";
+    let content = "";
+    
+    if (typeof msg.content === "string") {
+      content = msg.content;
+    } else if (Array.isArray(msg.content)) {
+      content = msg.content.map(c => {
+        if (typeof c === "string") return c;
+        if (typeof c === "object" && c !== null && "text" in c) {
+          return (c as any).text || "";
+        }
+        return "";
+      }).join("\n");
+    }
+    
+    if (content.trim()) {
+      contents.push({
+        role,
+        parts: [{ text: content }]
+      });
+    }
+  }
+  
+  // Ensure we have at least one user message
+  if (contents.length === 0 || contents[0].role !== "user") {
+    throw new Error("Gemini API requires at least one user message");
+  }
+
+  const payload: Record<string, unknown> = {
+    contents,
+    generationConfig: {
+      temperature: 0.7,
+      topK: 40,
+      topP: 0.95,
+      maxOutputTokens: 4000,
+    }
+  };
+  
+  // Add system instruction if we have one
+  if (systemInstruction) {
+    payload.systemInstruction = {
+      parts: [{ text: systemInstruction }]
+    };
+  }
+
+  // Handle JSON response format
+  const normalizedResponseFormat = normalizeResponseFormat({
+    responseFormat,
+    response_format,
+    outputSchema,
+    output_schema,
+  });
+  
+  if (normalizedResponseFormat && normalizedResponseFormat.type === "json_object") {
+    payload.generationConfig = {
+      ...payload.generationConfig as Record<string, unknown>,
+      responseMimeType: "application/json",
+    };
+  }
+
+  const apiKey = ENV.forgeApiKey;
+  // Use gemini-1.5-flash as it's more stable and widely available
+  const modelName = "gemini-1.5-flash";
+  const url = `${baseUrl}/models/${modelName}:generateContent?key=${apiKey}`;
+  
+  console.log("[Gemini API] Calling:", url.replace(apiKey, "***"));
+  console.log("[Gemini API] Payload:", JSON.stringify(payload, null, 2).substring(0, 500));
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[Gemini API] Request failed:", {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+        url: url.replace(apiKey, "***"),
+      });
+      throw new Error(`Gemini API failed: ${response.status} ${response.statusText} – ${errorText}`);
+    }
+
+    const geminiResponse = await response.json() as any;
+    
+    // Check for errors in response
+    if (geminiResponse.error) {
+      throw new Error(`Gemini API error: ${JSON.stringify(geminiResponse.error)}`);
+    }
+    
+    const text = geminiResponse.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    
+    if (!text) {
+      console.warn("[Gemini API] No text in response:", JSON.stringify(geminiResponse));
+      throw new Error("No text content in Gemini API response");
+    }
+
+    // Convert Gemini response to OpenAI-compatible format
+    return {
+      id: `gemini-${Date.now()}`,
+      created: Math.floor(Date.now() / 1000),
+      model: "gemini-1.5-flash",
+      choices: [{
+        index: 0,
+        message: {
+          role: "assistant",
+          content: text,
+        },
+        finish_reason: "stop",
+      }],
+      usage: geminiResponse.usageMetadata ? {
+        prompt_tokens: geminiResponse.usageMetadata.promptTokenCount || 0,
+        completion_tokens: geminiResponse.usageMetadata.candidatesTokenCount || 0,
+        total_tokens: geminiResponse.usageMetadata.totalTokenCount || 0,
+      } : undefined,
+    };
+  } catch (error) {
+    console.error("[Gemini API] Error:", error);
+    throw error;
+  }
+}
+
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   assertApiKey();
 
@@ -279,10 +456,43 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     response_format,
   } = params;
 
+  // Determine which model to use based on API endpoint
+  const apiUrl = resolveApiUrl();
+  const isOpenRouter = apiUrl.includes("openrouter.ai") || (ENV.forgeApiKey && ENV.forgeApiKey.startsWith("sk-or-v1-"));
+  const isOpenAI = apiUrl.includes("api.openai.com");
+  const isManusForge = apiUrl.includes("forge.manus.im");
+  const isGemini = apiUrl.includes("generativelanguage.googleapis.com") || (ENV.forgeApiKey && ENV.forgeApiKey.startsWith("AIza"));
+  
+  // Handle Gemini API (different format)
+  if (isGemini) {
+    // Use the base URL from ENV or default
+    let baseUrl = ENV.forgeApiUrl || "https://generativelanguage.googleapis.com/v1beta";
+    // Remove any trailing slashes and ensure it's just the base URL
+    baseUrl = baseUrl.replace(/\/$/, "");
+    // If it already has /models/, remove that part
+    if (baseUrl.includes("/models/")) {
+      baseUrl = baseUrl.split("/models/")[0];
+    }
+    // Ensure it ends with v1beta
+    if (!baseUrl.endsWith("v1beta")) {
+      if (baseUrl.endsWith("v1")) {
+        baseUrl = baseUrl + "beta";
+      } else {
+        baseUrl = baseUrl + "/v1beta";
+      }
+    }
+    console.log("[LLM] Using Gemini API with base URL:", baseUrl);
+    return await invokeGeminiAPI(params, baseUrl);
+  }
+  
+  // OpenRouter uses OpenAI-compatible format
   const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
+    model: isOpenRouter ? "google/gemini-2.0-flash-exp:free" : isOpenAI ? "gpt-4o-mini" : isManusForge ? "gemini-2.5-flash" : "gpt-4o-mini",
     messages: messages.map(normalizeMessage),
   };
+  
+  console.log("[LLM] Using API:", isOpenRouter ? "OpenRouter" : isOpenAI ? "OpenAI" : isManusForge ? "Manus Forge" : "Unknown");
+  console.log("[LLM] Model:", payload.model);
 
   if (tools && tools.length > 0) {
     payload.tools = tools;
@@ -296,9 +506,15 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.tool_choice = normalizedToolChoice;
   }
 
-  payload.max_tokens = 32768
-  payload.thinking = {
-    "budget_tokens": 128
+  // Only add thinking budget for Manus Forge
+  if (isManusForge) {
+    payload.max_tokens = 32768;
+    payload.thinking = {
+      "budget_tokens": 128
+    };
+  } else {
+    // OpenAI uses max_tokens differently
+    payload.max_tokens = 4000;
   }
 
   const normalizedResponseFormat = normalizeResponseFormat({
@@ -312,12 +528,20 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.response_format = normalizedResponseFormat;
   }
 
+  // OpenRouter requires additional headers
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    authorization: `Bearer ${ENV.forgeApiKey}`,
+  };
+  
+  if (isOpenRouter) {
+    headers["HTTP-Referer"] = "http://localhost:3000"; // Optional: your site URL
+    headers["X-Title"] = "ResumeRank"; // Optional: your app name
+  }
+  
   const response = await fetch(resolveApiUrl(), {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
-    },
+    headers,
     body: JSON.stringify(payload),
   });
 
