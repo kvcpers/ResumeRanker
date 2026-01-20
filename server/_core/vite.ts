@@ -3,12 +3,6 @@ import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
-import { createServer as createViteServer } from "vite";
-import { fileURLToPath } from "url";
-
-// Get __dirname equivalent for ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Lazy load vite config to avoid issues in production bundle
 // This function is only called in development mode
@@ -36,6 +30,10 @@ async function getViteConfig() {
 }
 
 export async function setupVite(app: Express, server: Server) {
+  // Dynamically import vite only when needed (development mode only)
+  // This prevents vite from being bundled or required in production
+  const { createServer: createViteServer } = await import("vite");
+  
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },

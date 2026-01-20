@@ -66,6 +66,7 @@ await build({
   resolveExtensions: ['.ts', '.js', '.json'],
   plugins: [aliasPlugin],
   // Mark vite and dev-only packages as external since they're only used in development
+  // Using dynamic imports in vite.ts ensures these are never loaded in production
   external: [
     'vite',
     '@builder.io/vite-plugin-jsx-loc',
@@ -75,6 +76,7 @@ await build({
     '../../vite.config.js',
     '../vite.config.js',
     './vite.config.js',
+    'vite.config.js',
   ],
   // Removed banner - createRequire is already imported in resumeAnalysis.ts
   // and adding it here causes duplicate declaration errors
