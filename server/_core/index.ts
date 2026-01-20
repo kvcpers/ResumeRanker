@@ -57,15 +57,21 @@ async function startServer() {
     serveStatic(app);
   }
 
+  // Heroku and other platforms assign PORT dynamically
   const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  
+  // In production (Heroku), use the PORT directly without checking availability
+  const port = process.env.NODE_ENV === "production" 
+    ? preferredPort 
+    : await findAvailablePort(preferredPort);
 
-  if (port !== preferredPort) {
+  if (port !== preferredPort && process.env.NODE_ENV !== "production") {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+  // Listen on all interfaces (0.0.0.0) for Heroku compatibility
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`Server running on http://0.0.0.0:${port}/`);
   });
 }
 
