@@ -219,9 +219,11 @@ export default function Home() {
                 INITIALIZE LOGIN <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
-            <Button variant="outline" size="lg" className="w-full sm:w-auto">
-              VIEW DEMO
-            </Button>
+            <Link href="/demo">
+              <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                VIEW DEMO
+              </Button>
+            </Link>
           </div>
 
           {/* Error Code Display */}

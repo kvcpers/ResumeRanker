@@ -11,12 +11,14 @@ import Leaderboard from "./pages/Leaderboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ResumeResults from "./pages/ResumeResults";
+import Demo from "./pages/Demo";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"\\"} component={Home} />
+      <Route path="/demo" component={Demo} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/upload" component={Upload} />
