@@ -11,19 +11,26 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db) {
     if (!process.env.DATABASE_URL) {
-      console.error("[Database] DATABASE_URL is not set in .env file");
+      console.error("[Database] ❌ DATABASE_URL is not set");
+      console.error("[Database] On Heroku, set it with: heroku config:set DATABASE_URL='your-connection-string'");
       return null;
     }
     try {
-      const client = postgres(process.env.DATABASE_URL);
+      const client = postgres(process.env.DATABASE_URL, {
+        max: 1, // Limit connections for serverless environments
+        idle_timeout: 20,
+        connect_timeout: 10,
+      });
       _db = drizzle(client);
       // Test connection
       await client`SELECT 1`;
-      console.log("[Database] Connected successfully to PostgreSQL");
+      console.log("[Database] ✅ Connected successfully to PostgreSQL");
     } catch (error) {
-      console.error("[Database] Failed to connect:", error);
-      console.error("[Database] Please check your DATABASE_URL in .env file");
-      console.error("[Database] Make sure PostgreSQL/Supabase is accessible");
+      console.error("[Database] ❌ Failed to connect:", error);
+      console.error("[Database] DATABASE_URL:", process.env.DATABASE_URL ? `${process.env.DATABASE_URL.substring(0, 20)}...` : "not set");
+      if (error instanceof Error) {
+        console.error("[Database] Error message:", error.message);
+      }
       _db = null;
     }
   }
