@@ -2,8 +2,12 @@ import { eq, desc, and, gt, count, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { nanoid } from "nanoid";
+import dns from "dns";
 import { InsertUser, InsertSession, users, sessions, resumes, resumeScores, biasFlags, recommendations, resumeEducation, resumeExperience, resumeSkills, resumeActivities } from "../drizzle/schema";
 import { ENV } from './_core/env';
+
+// Force IPv4 DNS resolution (Heroku doesn't support IPv6 to external databases)
+dns.setDefaultResultOrder('ipv4first');
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
