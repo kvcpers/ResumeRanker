@@ -35,6 +35,8 @@ export async function getDb() {
         max: 1, // Limit connections for serverless environments
         idle_timeout: 20,
         connect_timeout: 10,
+        // Supabase requires SSL in production environments like Heroku
+        ...(process.env.NODE_ENV === "production" ? { ssl: "require" as const } : {}),
         // The postgres library will resolve hostnames to IPv4 by default
         // If DNS returns both IPv4 and IPv6, Node.js will prefer IPv4
       });
