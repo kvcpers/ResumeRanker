@@ -17,27 +17,22 @@ export async function getDb() {
     }
     try {
       // Force IPv4 connection (Heroku doesn't support IPv6 to external databases)
-      // Parse the connection string and ensure we use IPv4
+      // The postgres library should prefer IPv4, but we can also ensure the connection string
+      // uses the hostname (which will resolve to IPv4) rather than an IPv6 address
       let connectionString = process.env.DATABASE_URL;
       
-      // If the connection string contains an IPv6 address, we need to use the hostname instead
-      // Supabase provides both IPv4 and IPv6, but Heroku can only reach IPv4
+      // Ensure we're using hostname format, not IPv6 address format
       if (connectionString) {
-        // Replace IPv6 addresses with hostname (Supabase hostname)
+        // Replace IPv6 bracket notation [::] with just the hostname
         connectionString = connectionString.replace(/@\[([^\]]+)\]:/, '@$1:');
-        // Ensure we're using the hostname format
-        const hostnameMatch = connectionString.match(/@([^:]+):/);
-        if (hostnameMatch && hostnameMatch[1].includes('supabase.co')) {
-          // Already using hostname, good
-        }
       }
       
       const client = postgres(connectionString, {
         max: 1, // Limit connections for serverless environments
         idle_timeout: 20,
         connect_timeout: 10,
-        // Force IPv4 by using the hostname resolution
-        // The postgres library will resolve the hostname to IPv4
+        // The postgres library will resolve hostnames to IPv4 by default
+        // If DNS returns both IPv4 and IPv6, Node.js will prefer IPv4
       });
       _db = drizzle(client);
       // Test connection
