@@ -4,7 +4,28 @@ import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import viteConfig from "../../vite.config";
+import { fileURLToPath } from "url";
+
+// Get __dirname equivalent for ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Lazy load vite config to avoid issues in production bundle
+// This function is only called in development mode
+async function getViteConfig() {
+  // Only try to load vite config in development
+  // In production, setupVite is never called
+  if (process.env.NODE_ENV === "development") {
+    try {
+      const viteConfig = await import("../../vite.config.js");
+      return viteConfig.default || viteConfig;
+    } catch (e) {
+      console.warn("Could not load vite config:", e);
+      return {};
+    }
+  }
+  return {};
+}
 
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
@@ -13,6 +34,7 @@ export async function setupVite(app: Express, server: Server) {
     allowedHosts: true as const,
   };
 
+  const viteConfig = await getViteConfig();
   const vite = await createViteServer({
     ...viteConfig,
     configFile: false,
@@ -26,8 +48,7 @@ export async function setupVite(app: Express, server: Server) {
 
     try {
       const clientTemplate = path.resolve(
-        import.meta.dirname,
-        "../..",
+        process.cwd(),
         "client",
         "index.html"
       );
