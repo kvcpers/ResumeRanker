@@ -27,8 +27,10 @@ const aliasPlugin = {
         }
       }
       
-      // Return path without extension - esbuild's resolveExtensions will handle it
-      return { path: path.resolve(basePath, importPath) };
+      // If file checking fails (e.g., on Heroku build), default to .ts extension
+      // This is safe since we're using TypeScript
+      const defaultPath = path.resolve(basePath, importPath + '.ts');
+      return { path: defaultPath };
     });
     
     build.onResolve({ filter: /^@\// }, (args) => {
