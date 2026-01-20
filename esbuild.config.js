@@ -1,6 +1,7 @@
 import { build } from 'esbuild';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,14 +11,44 @@ const aliasPlugin = {
   name: 'alias',
   setup(build) {
     build.onResolve({ filter: /^@shared\// }, (args) => {
-      return {
-        path: path.resolve(__dirname, 'shared', args.path.replace('@shared/', '')),
-      };
+      const importPath = args.path.replace('@shared/', '');
+      const basePath = path.resolve(__dirname, 'shared');
+      
+      // Try to find the file with extensions (check if file exists)
+      const extensions = ['.ts', '.tsx', '.js', '.jsx', '.json'];
+      for (const ext of extensions) {
+        const fullPath = path.resolve(basePath, importPath + ext);
+        try {
+          if (existsSync(fullPath)) {
+            return { path: fullPath };
+          }
+        } catch {
+          // Continue to next extension
+        }
+      }
+      
+      // Return path without extension - esbuild's resolveExtensions will handle it
+      return { path: path.resolve(basePath, importPath) };
     });
+    
     build.onResolve({ filter: /^@\// }, (args) => {
-      return {
-        path: path.resolve(__dirname, 'client/src', args.path.replace('@/', '')),
-      };
+      const importPath = args.path.replace('@/', '');
+      const basePath = path.resolve(__dirname, 'client/src');
+      
+      // Try to find the file with extensions
+      const extensions = ['.ts', '.tsx', '.js', '.jsx', '.json'];
+      for (const ext of extensions) {
+        const fullPath = path.resolve(basePath, importPath + ext);
+        try {
+          if (existsSync(fullPath)) {
+            return { path: fullPath };
+          }
+        } catch {
+          // Continue to next extension
+        }
+      }
+      
+      return { path: path.resolve(basePath, importPath) };
     });
   },
 };
