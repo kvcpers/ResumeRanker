@@ -1,0 +1,1080 @@
+{
+  "id": "2f520337-984a-42f3-a587-61f918375c50",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.biasFlags": {
+      "name": "biasFlags",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "resumeId": {
+          "name": "resumeId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "flagType": {
+          "name": "flagType",
+          "type": "flagType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "severity": {
+          "name": "severity",
+          "type": "severity",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'medium'"
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "flaggedContent": {
+          "name": "flaggedContent",
+          "type": "varchar(512)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "biasFlags_resumeId_resumes_id_fk": {
+          "name": "biasFlags_resumeId_resumes_id_fk",
+          "tableFrom": "biasFlags",
+          "tableTo": "resumes",
+          "columnsFrom": [
+            "resumeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rankingHistory": {
+      "name": "rankingHistory",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "resumeId": {
+          "name": "resumeId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "overallScore": {
+          "name": "overallScore",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "globalPercentile": {
+          "name": "globalPercentile",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "globalRank": {
+          "name": "globalRank",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recordedAt": {
+          "name": "recordedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rankingHistory_resumeId_resumes_id_fk": {
+          "name": "rankingHistory_resumeId_resumes_id_fk",
+          "tableFrom": "rankingHistory",
+          "tableTo": "resumes",
+          "columnsFrom": [
+            "resumeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "rankingHistory_userId_users_id_fk": {
+          "name": "rankingHistory_userId_users_id_fk",
+          "tableFrom": "rankingHistory",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.recommendations": {
+      "name": "recommendations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "resumeId": {
+          "name": "resumeId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recommendationType": {
+          "name": "recommendationType",
+          "type": "recommendationType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "priority": {
+          "name": "priority",
+          "type": "priority",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'medium'"
+        },
+        "estimatedImpact": {
+          "name": "estimatedImpact",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "recommendations_resumeId_resumes_id_fk": {
+          "name": "recommendations_resumeId_resumes_id_fk",
+          "tableFrom": "recommendations",
+          "tableTo": "resumes",
+          "columnsFrom": [
+            "resumeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "recommendations_userId_users_id_fk": {
+          "name": "recommendations_userId_users_id_fk",
+          "tableFrom": "recommendations",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.resumeActivities": {
+      "name": "resumeActivities",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "resumeId": {
+          "name": "resumeId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activityName": {
+          "name": "activityName",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activityType": {
+          "name": "activityType",
+          "type": "activityType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'other'"
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "date": {
+          "name": "date",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "resumeActivities_resumeId_resumes_id_fk": {
+          "name": "resumeActivities_resumeId_resumes_id_fk",
+          "tableFrom": "resumeActivities",
+          "tableTo": "resumes",
+          "columnsFrom": [
+            "resumeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.resumeEducation": {
+      "name": "resumeEducation",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "resumeId": {
+          "name": "resumeId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "institution": {
+          "name": "institution",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "degree": {
+          "name": "degree",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fieldOfStudy": {
+          "name": "fieldOfStudy",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gpa": {
+          "name": "gpa",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "startDate": {
+          "name": "startDate",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "endDate": {
+          "name": "endDate",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prestigeTier": {
+          "name": "prestigeTier",
+          "type": "prestigeTier",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'unknown'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "resumeEducation_resumeId_resumes_id_fk": {
+          "name": "resumeEducation_resumeId_resumes_id_fk",
+          "tableFrom": "resumeEducation",
+          "tableTo": "resumes",
+          "columnsFrom": [
+            "resumeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.resumeExperience": {
+      "name": "resumeExperience",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "resumeId": {
+          "name": "resumeId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "company": {
+          "name": "company",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "position": {
+          "name": "position",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "startDate": {
+          "name": "startDate",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "endDate": {
+          "name": "endDate",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "durationMonths": {
+          "name": "durationMonths",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "resumeExperience_resumeId_resumes_id_fk": {
+          "name": "resumeExperience_resumeId_resumes_id_fk",
+          "tableFrom": "resumeExperience",
+          "tableTo": "resumes",
+          "columnsFrom": [
+            "resumeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.resumeScores": {
+      "name": "resumeScores",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "resumeId": {
+          "name": "resumeId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "overallScore": {
+          "name": "overallScore",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "educationScore": {
+          "name": "educationScore",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "experienceScore": {
+          "name": "experienceScore",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "skillsScore": {
+          "name": "skillsScore",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activitiesScore": {
+          "name": "activitiesScore",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "globalPercentile": {
+          "name": "globalPercentile",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "globalRank": {
+          "name": "globalRank",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "totalResumesRanked": {
+          "name": "totalResumesRanked",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scoredAt": {
+          "name": "scoredAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "resumeScores_resumeId_resumes_id_fk": {
+          "name": "resumeScores_resumeId_resumes_id_fk",
+          "tableFrom": "resumeScores",
+          "tableTo": "resumes",
+          "columnsFrom": [
+            "resumeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "resumeScores_userId_users_id_fk": {
+          "name": "resumeScores_userId_users_id_fk",
+          "tableFrom": "resumeScores",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "resumeScores_resumeId_unique": {
+          "name": "resumeScores_resumeId_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "resumeId"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.resumeSkills": {
+      "name": "resumeSkills",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "resumeId": {
+          "name": "resumeId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "skillName": {
+          "name": "skillName",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "skillCategory": {
+          "name": "skillCategory",
+          "type": "skillCategory",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'other'"
+        },
+        "proficiencyLevel": {
+          "name": "proficiencyLevel",
+          "type": "proficiencyLevel",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'intermediate'"
+        },
+        "mentionCount": {
+          "name": "mentionCount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 1
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "resumeSkills_resumeId_resumes_id_fk": {
+          "name": "resumeSkills_resumeId_resumes_id_fk",
+          "tableFrom": "resumeSkills",
+          "tableTo": "resumes",
+          "columnsFrom": [
+            "resumeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.resumes": {
+      "name": "resumes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fileName": {
+          "name": "fileName",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fileKey": {
+          "name": "fileKey",
+          "type": "varchar(512)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fileUrl": {
+          "name": "fileUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rawText": {
+          "name": "rawText",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parsingStatus": {
+          "name": "parsingStatus",
+          "type": "parsingStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "parsingError": {
+          "name": "parsingError",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "resumes_userId_users_id_fk": {
+          "name": "resumes_userId_users_id_fk",
+          "tableFrom": "resumes",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sessions": {
+      "name": "sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expiresAt": {
+          "name": "expiresAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sessions_userId_users_id_fk": {
+          "name": "sessions_userId_users_id_fk",
+          "tableFrom": "sessions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sessions_token_unique": {
+          "name": "sessions_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "openId": {
+          "name": "openId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "passwordHash": {
+          "name": "passwordHash",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "loginMethod": {
+          "name": "loginMethod",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'user'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "lastSignedIn": {
+          "name": "lastSignedIn",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_openId_unique": {
+          "name": "users_openId_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "openId"
+          ]
+        },
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.activityType": {
+      "name": "activityType",
+      "schema": "public",
+      "values": [
+        "leadership",
+        "volunteer",
+        "achievement",
+        "award",
+        "certification",
+        "project",
+        "publication",
+        "other"
+      ]
+    },
+    "public.flagType": {
+      "name": "flagType",
+      "schema": "public",
+      "values": [
+        "name_bias",
+        "age_bias",
+        "gender_bias",
+        "location_bias",
+        "disability_bias",
+        "other"
+      ]
+    },
+    "public.parsingStatus": {
+      "name": "parsingStatus",
+      "schema": "public",
+      "values": [
+        "pending",
+        "parsing",
+        "completed",
+        "failed"
+      ]
+    },
+    "public.prestigeTier": {
+      "name": "prestigeTier",
+      "schema": "public",
+      "values": [
+        "tier1",
+        "tier2",
+        "tier3",
+        "tier4",
+        "tier5",
+        "unknown"
+      ]
+    },
+    "public.priority": {
+      "name": "priority",
+      "schema": "public",
+      "values": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "public.proficiencyLevel": {
+      "name": "proficiencyLevel",
+      "schema": "public",
+      "values": [
+        "beginner",
+        "intermediate",
+        "advanced",
+        "expert"
+      ]
+    },
+    "public.recommendationType": {
+      "name": "recommendationType",
+      "schema": "public",
+      "values": [
+        "skill_gap",
+        "education",
+        "experience",
+        "certification",
+        "activity",
+        "career_advice"
+      ]
+    },
+    "public.role": {
+      "name": "role",
+      "schema": "public",
+      "values": [
+        "user",
+        "admin"
+      ]
+    },
+    "public.severity": {
+      "name": "severity",
+      "schema": "public",
+      "values": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "public.skillCategory": {
+      "name": "skillCategory",
+      "schema": "public",
+      "values": [
+        "technical",
+        "soft",
+        "domain",
+        "language",
+        "tool",
+        "framework",
+        "other"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
