@@ -14,17 +14,25 @@ const __dirname = path.dirname(__filename);
 // This function is only called in development mode
 async function getViteConfig() {
   // Only try to load vite config in development
-  // In production, setupVite is never called
-  if (process.env.NODE_ENV === "development") {
-    try {
-      const viteConfig = await import("../../vite.config.js");
-      return viteConfig.default || viteConfig;
-    } catch (e) {
-      console.warn("Could not load vite config:", e);
-      return {};
-    }
+  // In production, setupVite is never called, so this code path is never reached
+  if (process.env.NODE_ENV !== "development") {
+    return {};
   }
-  return {};
+  
+  try {
+    // Use dynamic import with a string literal to help esbuild mark it as external
+    // In production builds, this import will be external and won't be bundled
+    const viteConfigModule = await import(
+      /* @vite-ignore */
+      "../../vite.config.js"
+    );
+    return viteConfigModule.default || viteConfigModule;
+  } catch (e) {
+    // If vite config can't be loaded (e.g., in production bundle), return empty config
+    // Vite server will use defaults
+    console.warn("Could not load vite config (this is normal in production):", e instanceof Error ? e.message : String(e));
+    return {};
+  }
 }
 
 export async function setupVite(app: Express, server: Server) {

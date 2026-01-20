@@ -65,6 +65,17 @@ await build({
   mainFields: ['module', 'main'],
   resolveExtensions: ['.ts', '.js', '.json'],
   plugins: [aliasPlugin],
+  // Mark vite and dev-only packages as external since they're only used in development
+  external: [
+    'vite',
+    '@builder.io/vite-plugin-jsx-loc',
+    '@tailwindcss/vite',
+    '@vitejs/plugin-react',
+    'vite-plugin-manus-runtime',
+    '../../vite.config.js',
+    '../vite.config.js',
+    './vite.config.js',
+  ],
   // Removed banner - createRequire is already imported in resumeAnalysis.ts
   // and adding it here causes duplicate declaration errors
 }).catch(() => process.exit(1));
